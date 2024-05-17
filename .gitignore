@@ -1,3 +1,6 @@
+*.xtc_offsets.lock
+*.xtc_offsets.npz
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

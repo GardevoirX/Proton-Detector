@@ -5,7 +5,7 @@ import numpy as np
 from MDAnalysis.analysis.distances import distance_array, self_distance_array
 from rich.progress import track
 
-from . import ProtonTrajCollection
+from .proton_traj import ProtonTrajCollection
 
 
 def calc_proton_pos(traj: mda.Universe, proton_idx):
@@ -33,6 +33,7 @@ def find_O_clusters(dist_mat, hydronium_O_idx):
     g = nx.from_numpy_array(dist_mat)
     return [hydronium_O_idx[list(sub_g)] for sub_g in nx.connected_components(g)]
 
+
 def partition_O(traj, hydronium_candidates, O_idx, O_pos, cutoff: float = 3):
     if len(O_idx[hydronium_candidates]) > 1:
         clusters = find_O_clusters(
@@ -43,6 +44,7 @@ def partition_O(traj, hydronium_candidates, O_idx, O_pos, cutoff: float = 3):
         clusters = [np.arange(len(O_idx))[hydronium_candidates]]
 
     return clusters
+
 
 def run(traj, O_idx, H_idx):
     proton_trajs = ProtonTrajCollection(traj.dimensions)
@@ -63,11 +65,14 @@ def run(traj, O_idx, H_idx):
             proton_idx.append(list(set(H_idx[dist_idx[cluster, 2]])))
             proton_p.append(calc_proton_pos(traj, proton_idx[-1]))
             proton_ori_p.append(ts._pos[proton_idx[-1]])
-        proton_trajs.append_new_frame(proton_p, proton_idx, O_clusters, iframe, proton_ori_p)
+        proton_trajs.append_new_frame(
+            proton_p, proton_idx, O_clusters, iframe, proton_ori_p
+        )
 
     return proton_trajs
 
-def calc_proton_pos(traj, traj_occupancy, proton_trajs, CELL):
+
+def get_proton_pos(traj, traj_occupancy, proton_trajs, CELL):
     proton_pos = []
     for iframe in range(len(traj.trajectory)):
         if (num := np.sum(traj_occupancy[:, iframe])) == 1:
@@ -75,10 +80,13 @@ def calc_proton_pos(traj, traj_occupancy, proton_trajs, CELL):
             proton_pos.append(pt.positions[iframe - pt.iframe[0]])
         elif num > 1:
             temp = mda.Universe.empty(num, trajectory=True)
-            temp.add_TopologyAttr('name', ['H'] * num)
-            ag = temp.select_atoms('all')
+            temp.add_TopologyAttr("name", ["H"] * num)
+            ag = temp.select_atoms("all")
             temp.add_bonds([ag])
-            temp.atoms.positions = [pt.positions[iframe - pt.iframe[0]] for pt in np.array(proton_trajs)[traj_occupancy[:, iframe]]]
+            temp.atoms.positions = [
+                pt.positions[iframe - pt.iframe[0]]
+                for pt in np.array(proton_trajs)[traj_occupancy[:, iframe]]
+            ]
             temp.dimensions = CELL
             proton_pos.append(ag.center_of_geometry(unwrap=True))
         else:
@@ -92,7 +100,7 @@ def calc_proton_pos(traj, traj_occupancy, proton_trajs, CELL):
         elif i:
             temp.append(temp[i - 1])
         elif i == 0:
-            temp.append(np.array([0., 0., 0.]))
+            temp.append(np.array([0.0, 0.0, 0.0]))
     proton_pos = np.array(temp)
 
     return proton_pos
