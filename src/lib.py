@@ -14,8 +14,10 @@ def calc_proton_pos(traj: mda.Universe, proton_idx):
         traj.add_bonds(list(combinations(proton_idx, r=2)))
         proton_pos = ag.center_of_geometry(unwrap=True)
         traj.delete_bonds(list(combinations(proton_idx, r=2)))
+    elif ag.n_atoms == 1:
+        proton_pos = ag.center_of_geometry()
     else:
-        proton_pos = ag.center_of_geometry(pbc=True) if ag.n_atoms != 0 else [np.nan]
+        proton_pos = [np.nan]
 
     return proton_pos
 

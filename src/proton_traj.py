@@ -1,6 +1,8 @@
 import numpy as np
 from MDAnalysis.analysis.distances import distance_array
 
+from ._utils._proton_traj import _assign_proton_to_trajs
+
 
 class ProtonTraj:
     def __init__(self, position, H_index, O_index, iframe):
@@ -57,6 +59,7 @@ class ProtonTrajCollection:
         return [self.trajs[i] for i in self.active_traj_idx]
 
     def append_new_frame(self, proton_pos, proton_idx, O_idx, iframe, ori_pos):
+        proton_pos = np.array(proton_pos)
         if np.isnan(proton_pos[0][0]):
             # Found no proton
             self.active_traj_idx = []
@@ -71,22 +74,12 @@ class ProtonTrajCollection:
             # Assign proton found to activate trajectories
             traj_ends = np.array([traj.position for traj in self.active_traj])
             pos2end_dist = distance_array(
-                np.array(proton_pos), traj_ends, box=self.dimension
+                proton_pos, traj_ends, box=self.dimension
             )
-            pos2end_dist[pos2end_dist > self.cutoff] = (
-                np.inf
-            )  # Only the proton within the cutoff can be assigned to one trajectory
-            assign = {i: None for i in range(len(proton_pos))}
-            update_traj = {i: False for i in range(len(self.active_traj))}
-            while np.any(~np.isinf(pos2end_dist)):
-                iproton, itraj = np.unravel_index(
-                    pos2end_dist.argmin(), pos2end_dist.shape
-                )
-                # One trajectory can accept only one proton every frame
-                pos2end_dist[iproton] = np.inf
-                pos2end_dist[:, itraj] = np.inf
-                assign[iproton] = itraj
-                update_traj[itraj] = True
+            # Only the proton within the cutoff can be assigned to one trajectory
+            pos2end_dist[pos2end_dist > self.cutoff] = np.inf
+            assign, update_traj = _assign_proton_to_trajs(proton_pos, pos2end_dist, self.active_traj)
+
             # Update or create
             for i in assign:
                 if assign[i] is None:
