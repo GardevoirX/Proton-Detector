@@ -69,7 +69,6 @@ class ProtonTrajCollection:
             # If no active trajectory, create trajectory for every proton found
             for pos, H, O in zip(proton_pos, proton_idx, O_idx):
                 self.create_new_traj(pos, H, O, iframe)
-            return
         else:
             # Assign proton found to activate trajectories
             traj_ends = np.array([traj.position for traj in self.active_traj])
@@ -88,11 +87,14 @@ class ProtonTrajCollection:
                     self.active_traj[assign[i]].update(
                         proton_pos[i], proton_idx[i], O_idx[i], iframe, ori_pos[i]
                     )
-            for i in sorted(
-                [idx for idx in update_traj if not update_traj[idx]], reverse=True
-            ):
-                del self.active_traj_idx[i]
+            self._deactivate_trajs(update_traj)
 
     def create_new_traj(self, position, H_index, O_index, iframe):
         self.trajs.append(ProtonTraj(position, H_index, O_index, iframe))
         self.active_traj_idx.append(len(self.trajs) - 1)
+
+    def _deactivate_trajs(self, update_traj: dict):
+        for i in sorted(
+            [idx for idx in update_traj if not update_traj[idx]], reverse=True
+        ):
+            del self.active_traj_idx[i]

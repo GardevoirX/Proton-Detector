@@ -8,12 +8,15 @@ from rich.progress import track
 from .proton_traj import ProtonTrajCollection
 
 
-def calc_proton_pos(traj: mda.Universe, proton_idx):
+def calc_proton_pos(traj: mda.Universe, proton_idx: list):
+    """Calculate the geometry center of a group of hydrogen atoms"""
     ag = traj.atoms[proton_idx]
     if ag.n_atoms > 1:
-        traj.add_bonds(list(combinations(proton_idx, r=2)))
+        # Connects hydrogen atoms together to calculate the proton position
+        bond_lst = list(zip(proton_idx[:-1], proton_idx[1:]))
+        traj.add_bonds(bond_lst)
         proton_pos = ag.center_of_geometry(unwrap=True)
-        traj.delete_bonds(list(combinations(proton_idx, r=2)))
+        traj.delete_bonds(bond_lst)
     elif ag.n_atoms == 1:
         proton_pos = ag.center_of_geometry()
     else:
@@ -60,15 +63,20 @@ def run(traj, O_idx, H_idx):
         hydronium_candidates = dist[:, 2] < 1.3
         # O atoms closer than 3 angstrom are considered as a group and can share a proton
         O_clusters = partition_O(traj, hydronium_candidates, O_idx, O_pos)
+        O_clusters_idx = [O_idx[O_cluster] for O_cluster in O_clusters]
         proton_idx = []
-        proton_p = []
-        proton_ori_p = []
+        proton_positions = []
+        hydrogen_group_positions = []
         for cluster in O_clusters:
             proton_idx.append(list(set(H_idx[dist_idx[cluster, 2]])))
-            proton_p.append(calc_proton_pos(traj, proton_idx[-1]))
-            proton_ori_p.append(ts._pos[proton_idx[-1]])
+            proton_positions.append(calc_proton_pos(traj, proton_idx[-1]))
+            hydrogen_group_positions.append(ts._pos[proton_idx[-1]])
         proton_trajs.append_new_frame(
-            proton_p, proton_idx, O_clusters, iframe, proton_ori_p
+            proton_positions,
+            proton_idx,
+            O_clusters_idx,
+            iframe,
+            hydrogen_group_positions,
         )
 
     return proton_trajs
