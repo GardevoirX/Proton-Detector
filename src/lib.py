@@ -5,7 +5,7 @@ import numpy as np
 from MDAnalysis.analysis.distances import distance_array, self_distance_array
 from rich.progress import track
 
-from .proton_traj import ProtonTrajCollection
+from . import ProtonTrajCollection
 
 
 def calc_proton_pos(traj: mda.Universe, proton_idx):
